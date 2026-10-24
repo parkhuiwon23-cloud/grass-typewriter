@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>타자기 잔디 심기 - 자연 토양과 곤충</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background-color: #1c140e;
+      color: #f8fafc;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+
+    /* Glassmorphism Overlay */
+    .glass-card {
+      background: rgba(28, 20, 14, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 235, 200, 0.18);
+      box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.45);
+    }
+
+    /* Custom Input Box */
+    textarea {
+      resize: none;
+      outline: none;
+      background: transparent;
+    }
+    
+    textarea::placeholder {
+      color: rgba(254, 243, 199, 0.5);
+      font-weight: 500;
+    }
+
+    /* Range Slider Styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      height: 6px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #facc15;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen">
+
+  <!-- Interactive Canvas Engine -->
+  <canvas id="meadowCanvas"></canvas>
+
+  <!-- Clean Floating Top Panel Focus on Input -->
+  <header class="absolute top-5 left-1/2 -translate-x-1/2 w-[94%] max-w-5xl glass-card rounded-2xl p-3 md:p-4 z-10 transition-all">
+    <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      
+      <!-- Prominent Text Input Box -->
+      <div class="relative flex-1 bg-black/30 rounded-xl border border-amber-500/20 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-400/30 transition-all p-3 flex items-center shadow-inner">
+        <textarea 
+          id="mainTextInput" 
+          rows="1" 
+          placeholder="텍스트를 입력해주세요."
+          class="w-full text-lg md:text-2xl font-bold text-amber-50 placeholder:text-amber-200/50 leading-relaxed overflow-hidden drop-shadow"
+          autofocus></textarea>
+      </div>
+
+      <!-- Right Action Icons & Real-time Stats -->
+      <div class="flex items-center justify-between md:justify-end gap-3 shrink-0">
+        
+        <!-- Stats Counter Panel -->
+        <div class="flex items-center gap-2.5 bg-black/35 px-3.5 py-2.5 rounded-xl border border-white/10 text-xs font-medium text-amber-100/90">
+          <span class="flex items-center gap-1">
+            <span class="text-amber-300">글자:</span>
+            <strong id="charCount" class="text-white font-semibold">0</strong>
+          </span>
+          <span class="h-3 w-[1px] bg-white/20"></span>
+          <span class="flex items-center gap-1">
+            <span class="text-emerald-400">줄기:</span>
+            <strong id="grassCount" class="text-white font-semibold">0</strong>
+          </span>
+          <span class="h-3 w-[1px] bg-white/20"></span>
+          <span class="flex items-center gap-1">
+            <span class="text-pink-300">꽃:</span>
+            <strong id="flowerCount" class="text-white font-semibold">0</strong>
+          </span>
+          <span class="h-3 w-[1px] bg-white/20"></span>
+          <span class="flex items-center gap-1">
+            <span class="text-yellow-300">곤충:</span>
+            <strong id="insectCount" class="text-white font-semibold">0</strong>
+          </span>
+        </div>
+
+        <!-- Action Icon Group -->
+        <div class="flex items-center gap-2">
+          <button id="btnToggleSettings" class="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all flex items-center justify-center text-base active:scale-95 shadow-sm" title="환경 설정">
+            <i class="fa-solid fa-sliders"></i>
+          </button>
+          <button id="btnTheme" class="w-11 h-11 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-300/40 transition-all flex items-center justify-center text-base active:scale-95 shadow-sm" title="토양 테마 변경">
+            <i class="fa-solid fa-palette"></i>
+          </button>
+          <button id="btnClear" class="w-11 h-11 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-300/30 transition-all flex items-center justify-center text-base active:scale-95 shadow-sm" title="전체 지우기">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Collapsible Settings Panel -->
+    <div id="settingsPanel" class="hidden mt-3 pt-3 border-t border-white/15 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+      <div class="flex flex-col gap-1">
+        <div class="flex justify-between text-amber-100">
+          <span>바람 세기 (Wind)</span>
+          <span id="windVal">1.0</span>
+        </div>
+        <input type="range" id="sliderWind" min="0" max="3" step="0.1" value="1.0">
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <div class="flex justify-between text-amber-100">
+          <span>잔디 밀도 (Density)</span>
+          <span id="densityVal">보통</span>
+        </div>
+        <input type="range" id="sliderDensity" min="3" max="6" step="1" value="4">
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <div class="flex justify-between text-amber-100">
+          <span>잔디 높이 (Height)</span>
+          <span id="heightVal">1.0</span>
+        </div>
+        <input type="range" id="sliderHeight" min="0.6" max="1.8" step="0.1" value="1.0">
+      </div>
+    </div>
+  </header>
+
+  <script>
+    /**
+     * Rich Soil Meadow Simulation Engine
+     */
+    const canvas = document.getElementById('meadowCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const mainTextInput = document.getElementById('mainTextInput');
+
+    // UI Handles
+    const charCountEl = document.getElementById('charCount');
+    const grassCountEl = document.getElementById('grassCount');
+    const flowerCountEl = document.getElementById('flowerCount');
+    const insectCountEl = document.getElementById('insectCount');
+    
+    const btnClear = document.getElementById('btnClear');
+    const btnTheme = document.getElementById('btnTheme');
+    const btnToggleSettings = document.getElementById('btnToggleSettings');
+    const settingsPanel = document.getElementById('settingsPanel');
+
+    const sliderWind = document.getElementById('sliderWind');
+    const sliderDensity = document.getElementById('sliderDensity');
+    const sliderHeight = document.getElementById('sliderHeight');
+
+    const windVal = document.getElementById('windVal');
+    const densityVal = document.getElementById('densityVal');
+    const heightVal = document.getElementById('heightVal');
+
+    // Canvas Size State
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    // Repositories
+    let grassBlades = [];
+    let pollenParticles = [];
+    let insects = [];
+    let windTime = 0;
+
+    // Environment Parameters
+    let windMultiplier = 1.0;
+    let densityStep = 4;
+    let heightMultiplier = 1.0;
+
+    // Soil & Field Themes
+    const themes = [
+      {
+        name: '비옥한 토양 (Rich Soil)',
+        bgColor: '#1c140e',
+        glowColor: 'rgba(217, 119, 6, 0.12)',
+        crumbColor: 'rgba(120, 53, 15, 0.4)',
+        grassLayers: [
+          { minH: 75, maxH: 95, sat: 65, light: 25 },
+          { minH: 85, maxH: 115, sat: 75, light: 38 },
+          { minH: 95, maxH: 135, sat: 85, light: 50 }
+        ],
+        flowerColors: ['#ff71ce', '#facc15', '#38bdf8', '#ffffff', '#f43f5e', '#a855f7']
+      },
+      {
+        name: '깊은 숲 이끼 (Deep Moss)',
+        bgColor: '#0f1715',
+        glowColor: 'rgba(16, 185, 129, 0.15)',
+        crumbColor: 'rgba(6, 78, 59, 0.5)',
+        grassLayers: [
+          { minH: 130, maxH: 150, sat: 60, light: 20 },
+          { minH: 140, maxH: 165, sat: 70, light: 32 },
+          { minH: 150, maxH: 180, sat: 80, light: 44 }
+        ],
+        flowerColors: ['#fb7185', '#38bdf8', '#fde047', '#e879f9', '#ffffff']
+      },
+      {
+        name: '가을 대지 (Autumn Earth)',
+        bgColor: '#21130d',
+        glowColor: 'rgba(249, 115, 22, 0.15)',
+        crumbColor: 'rgba(124, 45, 18, 0.5)',
+        grassLayers: [
+          { minH: 35, maxH: 55, sat: 65, light: 25 },
+          { minH: 45, maxH: 70, sat: 75, light: 36 },
+          { minH: 55, maxH: 85, sat: 85, light: 48 }
+        ],
+        flowerColors: ['#ef4444', '#f97316', '#facc15', '#ffffff', '#f43f5e']
+      }
+    ];
+    let currentThemeIdx = 0;
+
+    // Soil Background Offscreen Canvas
+    let soilCanvas = document.createElement('canvas');
+    let soilCtx = soilCanvas.getContext('2d');
+
+    function renderSoilBackground() {
+      soilCanvas.width = width;
+      soilCanvas.height = height;
+      const theme = themes[currentThemeIdx];
+
+      // Base Soil Background
+      soilCtx.fillStyle = theme.bgColor;
+      soilCtx.fillRect(0, 0, width, height);
+
+      // Radial Soft Glow in Center
+      const grad = soilCtx.createRadialGradient(
+        width / 2, height / 2, 50,
+        width / 2, height / 2, Math.max(width, height) * 0.75
+      );
+      grad.addColorStop(0, theme.glowColor);
+      grad.addColorStop(1, 'transparent');
+      soilCtx.fillStyle = grad;
+      soilCtx.fillRect(0, 0, width, height);
+
+      // Organic Soil Crumbs / Texture
+      soilCtx.fillStyle = theme.crumbColor;
+      const crumbCount = Math.floor((width * height) / 3500);
+      for (let i = 0; i < crumbCount; i++) {
+        const cx = Math.random() * width;
+        const cy = Math.random() * height;
+        const cr = 1 + Math.random() * 3;
+        soilCtx.beginPath();
+        soilCtx.arc(cx, cy, cr, 0, Math.PI * 2);
+        soilCtx.fill();
+      }
+    }
+
+    // Pollen Particle Engine
+    class Pollen {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.size = 1 + Math.random() * 2.5;
+        this.vx = (Math.random() - 0.5) * 1.5;
+        this.vy = -0.6 - Math.random() * 1.2;
+        this.life = 1.0;
+        this.decay = 0.008 + Math.random() * 0.015;
+      }
+
+      update() {
+        this.x += this.vx + Math.sin(windTime * 2) * 0.4;
+        this.y += this.vy;
+        this.life -= this.decay;
+      }
+
+      draw(context) {
+        context.save();
+        context.globalAlpha = Math.max(0, this.life);
+        context.beginPath();
+        context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        context.fillStyle = this.color;
+        context.shadowColor = this.color;
+        context.shadowBlur = 6;
+        context.fill();
+        context.restore();
+      }
+    }
+
+    // Insect Physics Engine (Butterflies & Bees)
+    class Insect {
+      constructor(type) {
+        this.type = type || (Math.random() > 0.35 ? 'butterfly' : 'bee');
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = (Math.random() - 0.5) * 2;
+        this.wingAngle = 0;
+        this.wingSpeed = this.type === 'bee' ? 0.4 : 0.15;
+        this.size = this.type === 'bee' ? 7 : 11;
+        this.wingColor = ['#38bdf8', '#fde047', '#f472b6', '#a855f7', '#fb923c'][Math.floor(Math.random() * 5)];
+        this.targetX = this.x;
+        this.targetY = this.y;
+        this.changeTargetTimer = 0;
+      }
+
+      update() {
+        this.wingAngle += this.wingSpeed;
+
+        this.changeTargetTimer--;
+        if (this.changeTargetTimer <= 0) {
+          this.targetX = Math.random() * (width * 0.8) + width * 0.1;
+          this.targetY = Math.random() * (height * 0.7) + height * 0.15;
+          this.changeTargetTimer = 60 + Math.floor(Math.random() * 120);
+        }
+
+        const dx = this.targetX - this.x;
+        const dy = this.targetY - this.y;
+        this.vx += dx * 0.0008 + (Math.random() - 0.5) * 0.3;
+        this.vy += dy * 0.0008 + (Math.random() - 0.5) * 0.3;
+
+        this.vx *= 0.95;
+        this.vy *= 0.95;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 20) this.x = 20;
+        if (this.x > width - 20) this.x = width - 20;
+        if (this.y < 20) this.y = 20;
+        if (this.y > height - 20) this.y = height - 20;
+      }
+
+      draw(context) {
+        context.save();
+        context.translate(this.x, this.y);
+        
+        const angle = Math.atan2(this.vy, this.vx);
+        context.rotate(angle);
+
+        const wingScale = Math.sin(this.wingAngle);
+
+        if (this.type === 'butterfly') {
+          context.fillStyle = this.wingColor;
+          context.shadowColor = 'rgba(0,0,0,0.3)';
+          context.shadowBlur = 4;
+
+          context.beginPath();
+          context.ellipse(-2, -this.size * 0.7 * Math.abs(wingScale), this.size, this.size * 0.6, Math.PI / 4, 0, Math.PI * 2);
+          context.fill();
+
+          context.beginPath();
+          context.ellipse(-2, this.size * 0.7 * Math.abs(wingScale), this.size, this.size * 0.6, -Math.PI / 4, 0, Math.PI * 2);
+          context.fill();
+
+          context.fillStyle = '#1e293b';
+          context.beginPath();
+          context.ellipse(0, 0, this.size * 0.7, 2, 0, 0, Math.PI * 2);
+          context.fill();
+        } else {
+          context.fillStyle = '#facc15';
+          context.beginPath();
+          context.ellipse(0, 0, this.size, this.size * 0.65, 0, 0, Math.PI * 2);
+          context.fill();
+
+          context.fillStyle = '#0f172a';
+          context.fillRect(-2, -this.size * 0.6, 2.5, this.size * 1.2);
+          context.fillRect(2, -this.size * 0.5, 2.5, this.size * 1);
+
+          context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          context.beginPath();
+          context.ellipse(-1, -this.size * wingScale, 3, this.size * 0.8, -Math.PI / 3, 0, Math.PI * 2);
+          context.ellipse(-1, this.size * wingScale, 3, this.size * 0.8, Math.PI / 3, 0, Math.PI * 2);
+          context.fill();
+        }
+
+        context.restore();
+      }
+    }
+
+    // Organic Grass Blade Engine
+    class GrassBlade {
+      constructor(x, y, layerIndex) {
+        this.x = x;
+        this.y = y;
+        this.layerIndex = layerIndex;
+
+        const theme = themes[currentThemeIdx];
+        const layerConfig = theme.grassLayers[layerIndex];
+
+        const baseH = (14 + Math.random() * 22) * (0.85 + layerIndex * 0.25);
+        this.targetHeight = baseH * heightMultiplier;
+        
+        this.currentHeight = 0;
+        this.growthVelocity = 0;
+        this.stiffness = 0.04 + Math.random() * 0.03;
+        this.damping = 0.78 + Math.random() * 0.08;
+        
+        this.width = (1.6 + Math.random() * 2.0) * (0.8 + layerIndex * 0.2);
+        this.naturalAngle = (Math.random() - 0.5) * 0.45;
+        this.swayFactor = (0.06 + Math.random() * 0.08) * (1 - layerIndex * 0.15);
+
+        const hue = layerConfig.minH + Math.random() * (layerConfig.maxH - layerConfig.minH);
+        const sat = layerConfig.sat + Math.random() * 15;
+        const light = layerConfig.light + Math.random() * 12;
+        this.color = `hsl(${hue}, ${sat}%, ${light}%)`;
+
+        this.hasFlower = layerIndex > 0 && Math.random() < 0.1;
+        this.flowerColor = theme.flowerColors[Math.floor(Math.random() * theme.flowerColors.length)];
+        this.flowerScale = 0;
+        this.targetFlowerScale = 3.0 + Math.random() * 3.5;
+        this.petals = 5 + Math.floor(Math.random() * 3);
+        this.hasPollenPopped = false;
+      }
+
+      update(globalWind) {
+        const force = (this.targetHeight - this.currentHeight) * this.stiffness;
+        this.growthVelocity += force;
+        this.growthVelocity *= this.damping;
+        this.currentHeight += this.growthVelocity;
+
+        if (this.hasFlower && this.currentHeight > this.targetHeight * 0.85) {
+          if (this.flowerScale < this.targetFlowerScale) {
+            this.flowerScale += 0.15;
+
+            if (!this.hasPollenPopped && this.flowerScale >= this.targetFlowerScale * 0.5) {
+              this.hasPollenPopped = true;
+              const totalAngle = this.naturalAngle + this.sway;
+              const tipX = this.x + Math.sin(totalAngle) * this.currentHeight;
+              const tipY = this.y - Math.cos(totalAngle) * this.currentHeight;
+
+              for (let p = 0; p < 5; p++) {
+                pollenParticles.push(new Pollen(tipX, tipY, this.flowerColor));
+              }
+            }
+          }
+        }
+
+        const windWave = Math.sin(windTime * 2.2 + this.x * 0.015 + this.y * 0.01);
+        this.sway = windWave * globalWind * this.swayFactor;
+      }
+
+      draw(context) {
+        if (this.currentHeight <= 0.5) return;
+
+        context.save();
+        context.translate(this.x, this.y);
+
+        const totalAngle = this.naturalAngle + this.sway;
+        const tipX = Math.sin(totalAngle) * this.currentHeight;
+        const tipY = -Math.cos(totalAngle) * this.currentHeight;
+
+        const cpX = tipX * 0.5 + Math.sin(this.sway * 1.5) * 6;
+        const cpY = tipY * 0.55;
+
+        // Blade Shadow on Ground
+        context.beginPath();
+        context.moveTo(0, 0);
+        context.quadraticCurveTo(cpX, cpY, tipX, tipY);
+        context.strokeStyle = 'rgba(0,0,0,0.25)';
+        context.lineWidth = Math.max(0.8, this.width * (this.currentHeight / this.targetHeight)) + 1.2;
+        context.lineCap = 'round';
+        context.stroke();
+
+        // Main Blade
+        context.beginPath();
+        context.moveTo(0, 0);
+        context.quadraticCurveTo(cpX, cpY, tipX, tipY);
+        context.strokeStyle = this.color;
+        context.lineWidth = Math.max(0.6, this.width * (this.currentHeight / this.targetHeight));
+        context.lineCap = 'round';
+        context.stroke();
+
+        // Blooming Flowers
+        if (this.hasFlower && this.flowerScale > 0.2) {
+          context.translate(tipX, tipY);
+
+          context.beginPath();
+          context.arc(0, 0, this.flowerScale * 0.35, 0, Math.PI * 2);
+          context.fillStyle = '#fde047';
+          context.fill();
+
+          context.fillStyle = this.flowerColor;
+          const angleStep = (Math.PI * 2) / this.petals;
+          for (let p = 0; p < this.petals; p++) {
+            const rot = p * angleStep + (this.sway * 0.5);
+            const px = Math.cos(rot) * (this.flowerScale * 0.75);
+            const py = Math.sin(rot) * (this.flowerScale * 0.75);
+
+            context.beginPath();
+            context.arc(px, py, this.flowerScale * 0.45, 0, Math.PI * 2);
+            context.fill();
+          }
+        }
+
+        context.restore();
+      }
+    }
+
+    /**
+     * Auto Word-Wrapping Text Renderer for Grass Generator
+     */
+    function generateGrassFromText(text) {
+      if (!text || text.trim().length === 0) {
+        grassBlades = [];
+        pollenParticles = [];
+        insects = [];
+        updateStats(0, 0, 0, 0);
+        return;
+      }
+
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = width;
+      offCanvas.height = height;
+      const offCtx = offCanvas.getContext('2d');
+
+      // Margin calculations based on 1920 or screen width
+      const margin = Math.max(60, width * 0.08); 
+      const maxTextWidth = width - (margin * 2);
+
+      let fontSize = Math.min(width / 8.5, 110);
+      offCtx.font = `900 ${fontSize}px 'Pretendard', sans-serif`;
+
+      // Split into paragraphs by explicit newline
+      const rawLines = text.split('\n');
+      let wrappedLines = [];
+
+      // Auto-wrap long lines that exceed maxTextWidth
+      rawLines.forEach((rawLine) => {
+        if (!rawLine) {
+          wrappedLines.push('');
+          return;
+        }
+
+        let currentLine = '';
+        const chars = Array.from(rawLine); // Handle Unicode correctly
+
+        chars.forEach((char) => {
+          const testLine = currentLine + char;
+          const testWidth = offCtx.measureText(testLine).width;
+
+          if (testWidth > maxTextWidth && currentLine !== '') {
+            wrappedLines.push(currentLine);
+            currentLine = char;
+          } else {
+            currentLine = testLine;
+          }
+        });
+
+        if (currentLine) {
+          wrappedLines.push(currentLine);
+        }
+      });
+
+      // Adjust Font Size if wrapped lines exceed canvas height
+      if (wrappedLines.length > 3) {
+        const adjustedFontSize = Math.min(fontSize, (height * 0.6) / wrappedLines.length);
+        if (adjustedFontSize < fontSize) {
+          fontSize = adjustedFontSize;
+          offCtx.font = `900 ${fontSize}px 'Pretendard', sans-serif`;
+        }
+      }
+
+      offCtx.fillStyle = '#ffffff';
+      offCtx.textAlign = 'center';
+      offCtx.textBaseline = 'middle';
+
+      const lineHeight = fontSize * 1.3;
+      const startY = (height / 2) - ((wrappedLines.length - 1) * lineHeight) / 2;
+
+      wrappedLines.forEach((line, index) => {
+        offCtx.fillText(line, width / 2, startY + index * lineHeight);
+      });
+
+      const imgData = offCtx.getImageData(0, 0, width, height).data;
+      const newGrass = [];
+      let flowerCount = 0;
+
+      const step = densityStep;
+
+      for (let y = 0; y < height; y += step) {
+        for (let x = 0; x < width; x += step) {
+          const alphaIndex = (y * width + x) * 4 + 3;
+
+          if (imgData[alphaIndex] > 120) {
+            const layerIndex = (x + y) % 3;
+            const jitterX = x + (Math.random() - 0.5) * (step * 0.9);
+            const jitterY = y + (Math.random() - 0.5) * (step * 0.9);
+
+            const blade = new GrassBlade(jitterX, jitterY, layerIndex);
+            if (blade.hasFlower) flowerCount++;
+            newGrass.push(blade);
+          }
+        }
+      }
+
+      grassBlades = newGrass;
+
+      // Spawn Insects based on text length
+      const desiredInsectCount = Math.min(18, Math.floor(text.length * 0.8));
+      while (insects.length < desiredInsectCount) {
+        insects.push(new Insect());
+      }
+      while (insects.length > desiredInsectCount) {
+        insects.pop();
+      }
+
+      updateStats(text.length, grassBlades.length, flowerCount, insects.length);
+    }
+
+    function updateStats(charCount, bladeCount, flowerCount, insectCount) {
+      charCountEl.textContent = charCount;
+      grassCountEl.textContent = bladeCount.toLocaleString();
+      flowerCountEl.textContent = flowerCount;
+      insectCountEl.textContent = insectCount;
+    }
+
+    function adjustTextareaHeight() {
+      mainTextInput.style.height = 'auto';
+      mainTextInput.style.height = Math.min(mainTextInput.scrollHeight, 130) + 'px';
+    }
+
+    mainTextInput.addEventListener('input', () => {
+      adjustTextareaHeight();
+      generateGrassFromText(mainTextInput.value);
+    });
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('header') && !e.target.closest('button')) {
+        mainTextInput.focus();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      renderSoilBackground();
+      generateGrassFromText(mainTextInput.value);
+    });
+
+    // Controls
+    btnToggleSettings.addEventListener('click', () => {
+      settingsPanel.classList.toggle('hidden');
+    });
+
+    sliderWind.addEventListener('input', (e) => {
+      windMultiplier = parseFloat(e.target.value);
+      windVal.textContent = windMultiplier.toFixed(1);
+    });
+
+    sliderDensity.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      densityStep = val;
+      const labels = { 3: '매우 촘촘', 4: '보통', 5: '여유있음', 6: '성성함' };
+      densityVal.textContent = labels[val] || '보통';
+      generateGrassFromText(mainTextInput.value);
+    });
+
+    sliderHeight.addEventListener('input', (e) => {
+      heightMultiplier = parseFloat(e.target.value);
+      heightVal.textContent = heightMultiplier.toFixed(1);
+      generateGrassFromText(mainTextInput.value);
+    });
+
+    btnClear.addEventListener('click', () => {
+      mainTextInput.value = '';
+      adjustTextareaHeight();
+      generateGrassFromText('');
+      mainTextInput.focus();
+    });
+
+    btnTheme.addEventListener('click', () => {
+      currentThemeIdx = (currentThemeIdx + 1) % themes.length;
+      renderSoilBackground();
+      generateGrassFromText(mainTextInput.value);
+      mainTextInput.focus();
+    });
+
+    // Main Rendering Loop
+    function animate() {
+      windTime += 0.02;
+      const globalWind = Math.sin(windTime * 0.8) * 1.6 * windMultiplier;
+
+      // Draw Soil Canvas Background
+      ctx.drawImage(soilCanvas, 0, 0);
+
+      // Render Grass
+      for (let i = 0; i < grassBlades.length; i++) {
+        grassBlades[i].update(globalWind);
+        grassBlades[i].draw(ctx);
+      }
+
+      // Render Pollen Particles
+      for (let i = pollenParticles.length - 1; i >= 0; i--) {
+        const p = pollenParticles[i];
+        p.update();
+        p.draw(ctx);
+        if (p.life <= 0) {
+          pollenParticles.splice(i, 1);
+        }
+      }
+
+      // Render Insects
+      for (let i = 0; i < insects.length; i++) {
+        insects[i].update();
+        insects[i].draw(ctx);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // Initialize Application
+    window.addEventListener('load', () => {
+      renderSoilBackground();
+      mainTextInput.value = "흙 속에서 자라나는 잔디";
+      adjustTextareaHeight();
+      mainTextInput.focus();
+      generateGrassFromText(mainTextInput.value);
+      animate();
+    });
+  </script>
+</body>
+</html>
